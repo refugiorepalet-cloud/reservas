@@ -1,0 +1,193 @@
+{
+  "entities": {
+    "AccessHosts": {
+      "title": "AccessHosts",
+      "description": "Lista blanca de correos autorizados para administrar Refugio Repalet.",
+      "type": "object",
+      "properties": {
+        "emails": {
+          "type": "array",
+          "description": "Correos electrónicos en minúsculas autorizados para acceder al sistema (máximo 5)."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Marca de tiempo del servidor de la última actualización."
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID del usuario que actualizó la lista blanca."
+        }
+      },
+      "required": ["emails", "updatedAt", "updatedBy"]
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "description": "Reserva o bloqueo de fechas para Cabaña Colibrí o Cabaña Chercán en Refugio Repalet.",
+      "type": "object",
+      "properties": {
+        "cabin": {
+          "type": "string",
+          "enum": ["colibri", "chercan"],
+          "description": "Identificador de la cabaña."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["confirmed", "pending_deposit", "blocked"],
+          "description": "Estado de la estadía o bloqueo."
+        },
+        "checkIn": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Fecha de ingreso (15:00 hrs) en formato YYYY-MM-DD."
+        },
+        "checkOut": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "Fecha de salida (12:00 hrs) en formato YYYY-MM-DD."
+        },
+        "guestName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Nombre completo del huésped o motivo del bloqueo."
+        },
+        "guestWhatsapp": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Número de WhatsApp del huésped."
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["whatsapp", "airbnb", "other", "internal"],
+          "description": "Canal de origen de la reserva."
+        },
+        "nightlyRate": {
+          "type": "number",
+          "description": "Tarifa por noche en CLP."
+        },
+        "nights": {
+          "type": "integer",
+          "description": "Cantidad de noches de la estadía."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Monto total estimado en CLP."
+        },
+        "depositAmount": {
+          "type": "number",
+          "description": "Monto correspondiente al abono del 50% en CLP."
+        },
+        "balanceAmount": {
+          "type": "number",
+          "description": "Monto correspondiente al saldo del 50% al llegar en CLP."
+        },
+        "checklist": {
+          "type": "object",
+          "description": "Lista rápida de seguimiento operativo."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Notas breves de la reserva o mantención."
+        },
+        "allowedEmails": {
+          "type": "array",
+          "description": "Lista acotada de correos autorizados para leer este documento."
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID del anfitrión que creó el registro."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Marca de tiempo de creación del servidor."
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID del anfitrión que realizó la última edición."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Marca de tiempo de actualización del servidor."
+        }
+      },
+      "required": [
+        "cabin",
+        "status",
+        "checkIn",
+        "checkOut",
+        "guestName",
+        "guestWhatsapp",
+        "channel",
+        "nightlyRate",
+        "nights",
+        "totalAmount",
+        "depositAmount",
+        "balanceAmount",
+        "checklist",
+        "notes",
+        "allowedEmails",
+        "createdBy",
+        "createdAt",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "PublicAvailability": {
+      "title": "PublicAvailability",
+      "description": "Disponibilidad pública sin datos personales (solo rangos YYYY-MM-DD/YYYY-MM-DD por cabaña).",
+      "type": "object",
+      "properties": {
+        "colibri": {
+          "type": "array",
+          "description": "Rangos ocupados de Cabaña Colibrí en formato YYYY-MM-DD/YYYY-MM-DD."
+        },
+        "chercan": {
+          "type": "array",
+          "description": "Rangos ocupados de Cabaña Chercán en formato YYYY-MM-DD/YYYY-MM-DD."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Marca de tiempo de actualización del servidor."
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID del anfitrión que sincronizó la disponibilidad."
+        }
+      },
+      "required": ["colibri", "chercan", "updatedAt", "updatedBy"]
+    }
+  },
+  "firestore": {
+    "/access/{accessId}": {
+      "schema": {
+        "$ref": "#/entities/AccessHosts"
+      },
+      "description": "Documento de configuración de lista blanca de anfitriones autorizados (documento 'hosts')."
+    },
+    "/reservations/{reservationId}": {
+      "schema": {
+        "$ref": "#/entities/Reservation"
+      },
+      "description": "Colección principal de reservas y bloqueos de las cabañas Colibrí y Chercán."
+    },
+    "/public/{docId}": {
+      "schema": {
+        "$ref": "#/entities/PublicAvailability"
+      },
+      "description": "Documento público de solo lectura ('availability') sin PII para alimentar la web pública."
+    }
+  }
+}

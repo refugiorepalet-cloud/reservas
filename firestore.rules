@@ -1,0 +1,253 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitives & Identity Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.size() <= 120;
+    }
+
+    function userEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isBootstrapHost() {
+      return isVerifiedUser() && userEmail() == 'claudiocrog@gmail.com';
+    }
+
+    function isWhitelistedHost() {
+      return isVerifiedUser() && (
+        isBootstrapHost() ||
+        (exists(/databases/$(database)/documents/access/hosts) &&
+         userEmail() in get(/databases/$(database)/documents/access/hosts).data.emails)
+      );
+    }
+
+    // --- Validation Blueprints ---
+    function isValidDateStr(d) {
+      return d is string && d.size() == 10 && d.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isValidAllowedEmails(emails) {
+      return emails is list
+        && emails.size() >= 1
+        && emails.size() <= 5
+        && emails[0] is string
+        && emails[0].size() >= 3
+        && emails[0].size() <= 120
+        && 'claudiocrog@gmail.com' in emails;
+    }
+
+    function isValidAccessHosts(data) {
+      return data.keys().hasAll(['emails', 'updatedAt', 'updatedBy'])
+        && data.keys().hasOnly(['emails', 'updatedAt', 'updatedBy'])
+        && isValidAllowedEmails(data.emails)
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && data.updatedBy is string
+        && data.updatedBy == request.auth.uid;
+    }
+
+    function isValidChecklist(c) {
+      return c is map
+        && c.keys().hasAll(['depositReceived', 'balancePaid', 'idRegistered', 'keysHandled'])
+        && c.keys().hasOnly(['depositReceived', 'balancePaid', 'idRegistered', 'keysHandled'])
+        && c.depositReceived is bool
+        && c.balancePaid is bool
+        && c.idRegistered is bool
+        && c.keysHandled is bool;
+    }
+
+    function isValidReservation(data) {
+      return data.keys().hasAll([
+          'cabin', 'status', 'checkIn', 'checkOut', 'guestName', 'guestWhatsapp',
+          'channel', 'nightlyRate', 'nights', 'totalAmount', 'depositAmount',
+          'balanceAmount', 'checklist', 'notes', 'allowedEmails',
+          'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'cabin', 'status', 'checkIn', 'checkOut', 'guestName', 'guestWhatsapp',
+          'channel', 'nightlyRate', 'nights', 'totalAmount', 'depositAmount',
+          'balanceAmount', 'checklist', 'notes', 'allowedEmails',
+          'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
+        ])
+        && data.cabin in ['colibri', 'chercan']
+        && data.status in ['confirmed', 'pending_deposit', 'blocked']
+        && isValidDateStr(data.checkIn)
+        && isValidDateStr(data.checkOut)
+        && data.checkOut > data.checkIn
+        && data.guestName is string
+        && data.guestName.size() >= 1
+        && data.guestName.size() <= 100
+        && data.guestWhatsapp is string
+        && data.guestWhatsapp.size() <= 30
+        && data.channel in ['whatsapp', 'airbnb', 'other', 'internal']
+        && data.nightlyRate is number
+        && data.nightlyRate >= 0
+        && data.nightlyRate <= 5000000
+        && data.nights is int
+        && data.nights >= 1
+        && data.nights <= 365
+        && data.totalAmount is number
+        && data.totalAmount >= 0
+        && data.totalAmount <= 200000000
+        && data.depositAmount is number
+        && data.depositAmount >= 0
+        && data.depositAmount <= 200000000
+        && data.balanceAmount is number
+        && data.balanceAmount >= 0
+        && data.balanceAmount <= 200000000
+        && isValidChecklist(data.checklist)
+        && data.notes is string
+        && data.notes.size() <= 1000
+        && isValidAllowedEmails(data.allowedEmails)
+        && data.createdBy is string
+        && data.createdBy.size() >= 1
+        && data.createdBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedBy is string
+        && data.updatedBy == request.auth.uid
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidDateRangeList(ranges) {
+      return ranges is list
+        && ranges.size() <= 250
+        && (
+          ranges.size() == 0 || (
+            ranges[0] is string
+            && ranges[0].size() == 21
+            && ranges[0].matches('^\\d{4}-\\d{2}-\\d{2}/\\d{4}-\\d{2}-\\d{2}$')
+          )
+        );
+    }
+
+    function isValidPublicAvailability(data) {
+      return data.keys().hasAll(['colibri', 'chercan', 'updatedAt', 'updatedBy'])
+        && data.keys().hasOnly(['colibri', 'chercan', 'updatedAt', 'updatedBy'])
+        && isValidDateRangeList(data.colibri)
+        && isValidDateRangeList(data.chercan)
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && data.updatedBy is string
+        && data.updatedBy == request.auth.uid;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Authorized Hosts Whitelist (/access/hosts)
+    match /access/{accessId} {
+      allow get: if isVerifiedUser()
+        && isValidId(accessId)
+        && accessId == 'hosts'
+        && (isBootstrapHost() || userEmail() in existing().emails);
+
+      allow list: if false;
+
+      allow create: if isBootstrapHost()
+        && isValidId(accessId)
+        && accessId == 'hosts'
+        && isValidAccessHosts(incoming());
+
+      allow update: if isBootstrapHost()
+        && isValidId(accessId)
+        && accessId == 'hosts'
+        && isValidAccessHosts(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['emails', 'updatedAt', 'updatedBy']);
+
+      allow delete: if false;
+    }
+
+    // 2. Reservations & Cabin Blocks (/reservations/{reservationId})
+    match /reservations/{reservationId} {
+      allow get: if isVerifiedUser()
+        && isValidId(reservationId)
+        && (isBootstrapHost() || userEmail() in existing().allowedEmails);
+
+      allow list: if isVerifiedUser()
+        && userEmail() in resource.data.allowedEmails;
+
+      allow create: if isVerifiedUser()
+        && isValidId(reservationId)
+        && isValidReservation(incoming())
+        && incoming().createdBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && userEmail() in incoming().allowedEmails
+        && isWhitelistedHost();
+
+      allow update: if isVerifiedUser()
+        && isValidId(reservationId)
+        && isValidReservation(incoming())
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && isWhitelistedHost()
+        && (
+          // Action 1: Quick checklist toggle
+          incoming().diff(existing()).affectedKeys().hasOnly(['checklist', 'updatedAt', 'updatedBy']) ||
+          // Action 2: Sync authorized host emails (bootstrap host only)
+          (isBootstrapHost() && incoming().diff(existing()).affectedKeys().hasOnly(['allowedEmails', 'updatedAt', 'updatedBy'])) ||
+          // Action 3: Full reservation edit (non-bootstrap hosts cannot alter allowedEmails)
+          (
+            (incoming().allowedEmails == existing().allowedEmails || isBootstrapHost()) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'cabin', 'status', 'checkIn', 'checkOut', 'guestName', 'guestWhatsapp',
+              'channel', 'nightlyRate', 'nights', 'totalAmount', 'depositAmount',
+              'balanceAmount', 'checklist', 'notes', 'allowedEmails', 'updatedAt', 'updatedBy'
+            ])
+          )
+        );
+
+      allow delete: if isVerifiedUser()
+        && isValidId(reservationId)
+        && isWhitelistedHost()
+        && (isBootstrapHost() || userEmail() in existing().allowedEmails);
+    }
+
+    // 3. Public Zero-PII Availability (/public/availability)
+    match /public/{docId} {
+      allow get: if isValidId(docId) && docId == 'availability';
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(docId)
+        && docId == 'availability'
+        && isValidPublicAvailability(incoming())
+        && isWhitelistedHost();
+
+      allow update: if isVerifiedUser()
+        && isValidId(docId)
+        && docId == 'availability'
+        && isValidPublicAvailability(incoming())
+        && isWhitelistedHost()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['colibri', 'chercan', 'updatedAt', 'updatedBy']);
+
+      allow delete: if false;
+    }
+  }
+}

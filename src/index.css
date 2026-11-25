@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+
+  --color-cream: #F5EBDD;
+  --color-sand: #D9C3A0;
+  --color-wood: #3F2E26;
+  --color-teal: #4EBBAD;
+  --color-teal-deep: #2B8A7E;
+  --color-sunset: #F16E3F;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: #F5EBDD;
+    color: #3F2E26;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    background-color: #F5EBDD;
+    color: #3F2E26;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  button, a, input, select, textarea {
+    font-family: inherit;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
