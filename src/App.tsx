@@ -311,8 +311,19 @@ function AdminApp() {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('popup-closed-by-user')) {
-        setAuthError('No pudimos completar el inicio de sesión con Google. Intenta de nuevo.');
+      if (msg.includes('popup-closed-by-user')) {
+        return;
+      }
+      if (msg.includes('unauthorized-domain')) {
+        setAuthError(
+          `Este dominio (${window.location.hostname}) aún no está autorizado en Firebase. Agrégalo en Firebase Console → Authentication → Settings → Authorized domains.`
+        );
+      } else if (msg.includes('popup-blocked')) {
+        setAuthError(
+          'Tu navegador bloqueó la ventana emergente de Google. Permite las ventanas emergentes para este sitio e intenta de nuevo.'
+        );
+      } else {
+        setAuthError(`No pudimos completar el inicio de sesión con Google (${msg}).`);
       }
     } finally {
       setIsSigningIn(false);
