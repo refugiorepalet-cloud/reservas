@@ -57,9 +57,15 @@
           "maxLength": 100,
           "description": "Nombre completo del huésped o motivo del bloqueo."
         },
+        "guestDocument": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "RUT, DNI o pasaporte del huésped."
+        },
         "guestWhatsapp": {
           "type": "string",
           "maxLength": 30,
+          "pattern": "^[0-9+\\-\\s()]{0,30}$",
           "description": "Número de WhatsApp del huésped."
         },
         "channel": {

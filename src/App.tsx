@@ -229,6 +229,7 @@ function AdminApp() {
             checkIn: String(raw.checkIn || ''),
             checkOut: String(raw.checkOut || ''),
             guestName: String(raw.guestName || ''),
+            guestDocument: String(raw.guestDocument || ''),
             guestWhatsapp: String(raw.guestWhatsapp || ''),
             channel:
               raw.channel === 'airbnb' ||
@@ -601,9 +602,9 @@ function AdminApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5EBDD] text-[#3F2E26] flex flex-col pb-20 md:pb-8">
+    <div className="min-h-screen bg-[#F5EBDD] text-[#3F2E26] flex flex-col pb-20 md:pb-8 print:bg-white print:pb-0">
       {/* Compact Sticky Top Bar (3-zone contract) */}
-      <header className="sticky top-0 z-30 h-14 bg-[#FAF4EC]/90 backdrop-blur-md border-b border-[#3F2E26]/12">
+      <header className="sticky top-0 z-30 h-14 bg-[#FAF4EC]/90 backdrop-blur-md border-b border-[#3F2E26]/12 print:hidden">
         <div className="max-w-6xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-4 md:gap-8">
           {/* Zone 1: Single-line Brand Wordmark */}
           <button
@@ -811,7 +812,7 @@ function AdminApp() {
       {/* Mobile Bottom Navigation Bar (Thumb Zone) */}
       <nav
         aria-label="Navegación principal"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#FAF4EC]/95 backdrop-blur-md border-t border-[#3F2E26]/12 pb-safe"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#FAF4EC]/95 backdrop-blur-md border-t border-[#3F2E26]/12 pb-safe print:hidden"
       >
         <div className="grid grid-cols-3 h-16 items-center">
           {(

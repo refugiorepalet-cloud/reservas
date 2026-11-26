@@ -91,7 +91,7 @@ service cloud.firestore {
           'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
         ])
         && data.keys().hasOnly([
-          'cabin', 'status', 'checkIn', 'checkOut', 'guestName', 'guestWhatsapp',
+          'cabin', 'status', 'checkIn', 'checkOut', 'guestName', 'guestDocument', 'guestWhatsapp',
           'channel', 'nightlyRate', 'nights', 'totalAmount', 'depositAmount',
           'balanceAmount', 'checklist', 'notes', 'allowedEmails',
           'createdBy', 'createdAt', 'updatedBy', 'updatedAt'
@@ -104,8 +104,10 @@ service cloud.firestore {
         && data.guestName is string
         && data.guestName.size() >= 1
         && data.guestName.size() <= 100
+        && (!('guestDocument' in data) || (data.guestDocument is string && data.guestDocument.size() <= 30))
         && data.guestWhatsapp is string
         && data.guestWhatsapp.size() <= 30
+        && data.guestWhatsapp.matches('^[0-9+\\-\\s()]{0,30}$')
         && data.channel in ['whatsapp', 'airbnb', 'other', 'internal']
         && data.nightlyRate is number
         && data.nightlyRate >= 0
@@ -216,7 +218,7 @@ service cloud.firestore {
           (
             (incoming().allowedEmails == existing().allowedEmails || isBootstrapHost()) &&
             incoming().diff(existing()).affectedKeys().hasOnly([
-              'cabin', 'status', 'checkIn', 'checkOut', 'guestName', 'guestWhatsapp',
+              'cabin', 'status', 'checkIn', 'checkOut', 'guestName', 'guestDocument', 'guestWhatsapp',
               'channel', 'nightlyRate', 'nights', 'totalAmount', 'depositAmount',
               'balanceAmount', 'checklist', 'notes', 'allowedEmails', 'updatedAt', 'updatedBy'
             ])

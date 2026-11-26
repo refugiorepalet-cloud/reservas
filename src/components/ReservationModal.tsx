@@ -19,6 +19,7 @@ import {
   CHANNEL_META,
   CHECKLIST_ITEMS,
   DEFAULT_NIGHTLY_RATE,
+  MAX_DOCUMENT_LEN,
   MAX_GUEST_NAME_LEN,
   MAX_NOTES_LEN,
   MAX_WHATSAPP_LEN,
@@ -88,6 +89,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     prefillCheckIn ? addDaysISO(prefillCheckIn, 1) : ''
   );
   const [guestName, setGuestName] = useState<string>('');
+  const [guestDocument, setGuestDocument] = useState<string>('');
   const [guestWhatsapp, setGuestWhatsapp] = useState<string>('');
   const [channel, setChannel] = useState<BookingChannel>('whatsapp');
   const [nightlyRateStr, setNightlyRateStr] = useState<string>(
@@ -108,7 +110,12 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       setCheckIn(reservation.checkIn);
       setCheckOut(reservation.checkOut);
       setGuestName(reservation.guestName);
-      setGuestWhatsapp(reservation.guestWhatsapp);
+      setGuestDocument(reservation.guestDocument || '');
+      setGuestWhatsapp(
+        (reservation.guestWhatsapp || '')
+          .replace(/[^\d+]/g, '')
+          .replace(/(?!^)\+/g, '')
+      );
       setChannel(reservation.channel);
       setNightlyRateStr(String(reservation.nightlyRate));
       setChecklist(reservation.checklist);
@@ -120,6 +127,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       setCheckIn(start);
       setCheckOut(addDaysISO(start, 1));
       setGuestName('');
+      setGuestDocument('');
       setGuestWhatsapp('');
       setChannel('whatsapp');
       setNightlyRateStr(String(DEFAULT_NIGHTLY_RATE));
@@ -191,6 +199,28 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       return;
     }
 
+    const cleanDocument =
+      status === 'blocked' ? '' : guestDocument.trim().slice(0, MAX_DOCUMENT_LEN);
+
+    const cleanWhatsapp =
+      status === 'blocked'
+        ? ''
+        : guestWhatsapp
+            .replace(/[^\d+]/g, '')
+            .replace(/(?!^)\+/g, '')
+            .slice(0, MAX_WHATSAPP_LEN);
+
+    if (
+      status !== 'blocked' &&
+      cleanWhatsapp.length > 0 &&
+      !/^\+?\d{8,15}$/.test(cleanWhatsapp)
+    ) {
+      setFormError(
+        'Ingresa un número de WhatsApp válido (solo dígitos, ej: +56987654321).'
+      );
+      return;
+    }
+
     const syncedChecklist: ReservationChecklist = {
       ...checklist,
       depositReceived:
@@ -203,8 +233,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       checkIn,
       checkOut,
       guestName: cleanName,
-      guestWhatsapp:
-        status === 'blocked' ? '' : guestWhatsapp.trim().slice(0, MAX_WHATSAPP_LEN),
+      guestDocument: cleanDocument,
+      guestWhatsapp: cleanWhatsapp,
       channel: status === 'blocked' ? 'internal' : channel,
       nightlyRate: numericRate,
       nights,
@@ -285,26 +315,39 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           </div>
         </div>
 
-        {/* WhatsApp Direct Action */}
+        {/* Guest Document & WhatsApp Direct Action */}
         {reservation.status !== 'blocked' && (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#3F2E26]/12 bg-[#FAF4EC] p-3.5">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium text-[#3F2E26]/65">WhatsApp del huésped</p>
-              <p className="text-sm font-semibold text-[#3F2E26] tabular-nums truncate">
-                {reservation.guestWhatsapp || 'Sin número registrado'}
-              </p>
+          <div className="rounded-2xl border border-[#3F2E26]/12 bg-[#FAF4EC] p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-[#3F2E26]/65">
+                  RUT / DNI / Pasaporte
+                </p>
+                <p className="text-sm font-semibold text-[#3F2E26] tabular-nums truncate">
+                  {reservation.guestDocument || 'Sin registrar'}
+                </p>
+              </div>
             </div>
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[44px] px-4 py-2 rounded-xl bg-[#4EBBAD] text-[#173E39] text-xs font-bold flex items-center gap-1.5 hover:bg-[#3fa99b] transition-colors shrink-0 whitespace-nowrap"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Abrir WhatsApp
-              </a>
-            )}
+
+            <div className="pt-2.5 border-t border-[#3F2E26]/10 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-[#3F2E26]/65">WhatsApp del huésped</p>
+                <p className="text-sm font-semibold text-[#3F2E26] tabular-nums truncate">
+                  {reservation.guestWhatsapp || 'Sin número registrado'}
+                </p>
+              </div>
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-[#4EBBAD] text-[#173E39] text-xs font-bold flex items-center gap-1.5 hover:bg-[#3fa99b] transition-colors shrink-0 whitespace-nowrap"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Abrir WhatsApp
+                </a>
+              )}
+            </div>
           </div>
         )}
 
@@ -608,6 +651,27 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           />
         </div>
 
+        {/* Guest Document (RUT / DNI / Pasaporte) */}
+        {!isBlock && (
+          <div>
+            <label
+              htmlFor="guestDocumentInput"
+              className="block text-xs font-semibold text-[#3F2E26]/80 mb-1"
+            >
+              RUT / DNI / Pasaporte
+            </label>
+            <input
+              id="guestDocumentInput"
+              type="text"
+              maxLength={MAX_DOCUMENT_LEN}
+              value={guestDocument}
+              onChange={(e) => setGuestDocument(e.target.value)}
+              placeholder="Ej: 12.345.678-9 o Pasaporte"
+              className="w-full min-h-[44px] px-3.5 rounded-xl border border-[#3F2E26]/20 bg-white text-sm text-[#3F2E26] tabular-nums focus:outline-none focus:ring-2 focus:ring-[#4EBBAD]"
+            />
+          </div>
+        )}
+
         {/* WhatsApp + Channel */}
         {!isBlock && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -616,15 +680,21 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                 htmlFor="whatsappInput"
                 className="block text-xs font-semibold text-[#3F2E26]/80 mb-1"
               >
-                WhatsApp
+                WhatsApp (solo números)
               </label>
               <input
                 id="whatsappInput"
                 type="tel"
-                maxLength={MAX_WHATSAPP_LEN}
+                inputMode="tel"
+                maxLength={16}
                 value={guestWhatsapp}
-                onChange={(e) => setGuestWhatsapp(e.target.value)}
-                placeholder="+56 9 8765 4321"
+                onChange={(e) => {
+                  const sanitized = e.target.value
+                    .replace(/[^\d+]/g, '')
+                    .replace(/(?!^)\+/g, '');
+                  setGuestWhatsapp(sanitized);
+                }}
+                placeholder="+56987654321"
                 className="w-full min-h-[44px] px-3.5 rounded-xl border border-[#3F2E26]/20 bg-white text-sm text-[#3F2E26] tabular-nums focus:outline-none focus:ring-2 focus:ring-[#4EBBAD]"
               />
             </div>

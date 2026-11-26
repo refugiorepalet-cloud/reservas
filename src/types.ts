@@ -17,6 +17,7 @@ export interface Reservation {
   checkIn: string; // YYYY-MM-DD (15:00 hrs)
   checkOut: string; // YYYY-MM-DD (12:00 hrs)
   guestName: string;
+  guestDocument: string;
   guestWhatsapp: string;
   channel: BookingChannel;
   nightlyRate: number;
@@ -41,6 +42,7 @@ export type ReservationInput = Omit<
 export const BOOTSTRAP_HOST_EMAIL = 'claudiocrog@gmail.com';
 export const DEFAULT_NIGHTLY_RATE = 65000;
 export const MAX_GUEST_NAME_LEN = 100;
+export const MAX_DOCUMENT_LEN = 30;
 export const MAX_WHATSAPP_LEN = 30;
 export const MAX_NOTES_LEN = 1000;
 

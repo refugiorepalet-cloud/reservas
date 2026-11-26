@@ -2,5 +2,7 @@
   "name": "Refugio Repalet",
   "description": "Gestión privada de reservas y calendario en tiempo real para Cabaña Colibrí y Cabaña Chercán en Horcón.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
